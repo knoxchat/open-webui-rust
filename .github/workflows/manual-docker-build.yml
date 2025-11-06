@@ -10,8 +10,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ toLower(github.repository) }}
-
+  # 移除 IMAGE_NAME 环境变量，改用作业内动态设置
 
 permissions:
   contents: read
@@ -40,6 +39,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # 新增步骤：动态设置小写镜像名
+      - name: Set image name environment variable
+        run: |
+          echo "IMAGE_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+        shell: bash
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -47,34 +52,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push ${{ matrix.arch }} image
+      - name: Build, push, and export ${{ matrix.arch }} image
         uses: docker/build-push-action@v5
         with:
           context: .
           platforms: ${{ matrix.platform }}
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.tag }}-${{ matrix.arch }}
           cache-from: type=gha,scope=${{ matrix.arch }}
           cache-to: type=gha,scope=${{ matrix.arch }},mode=max
-
-      - name: Export ${{ matrix.arch }} image as artifact
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: ${{ matrix.platform }}
-          load: true
-          tags: local/${{ env.IMAGE_NAME }}:${{ inputs.tag }}-${{ matrix.arch }}
-          cache-from: type=gha,scope=${{ matrix.arch }}
-          cache-to: type=gha,scope=${{ matrix.arch }},mode=max
-
-      - name: Save Docker image archive
-        run: |
-          docker save local/${{ env.IMAGE_NAME }}:${{ inputs.tag }}-${{ matrix.arch }} \
-            -o ${{ inputs.tag }}-${{ matrix.arch }}.tar
+          outputs: |
+            type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.tag }}-${{ matrix.arch }},push=true
+            type=docker,dest=/tmp/${{ inputs.tag }}-${{ matrix.arch }}.tar
 
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
           name: docker-image-${{ inputs.tag }}-${{ matrix.arch }}
-          path: ${{ inputs.tag }}-${{ matrix.arch }}.tar
+          path: /tmp/${{ inputs.tag }}-${{ matrix.arch }}.tar
           compression-level: 0
