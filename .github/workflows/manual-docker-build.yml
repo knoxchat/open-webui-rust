@@ -12,6 +12,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ toLower(github.repository) }}
 
+
 permissions:
   contents: read
   packages: write
