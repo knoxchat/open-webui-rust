@@ -70,7 +70,7 @@
 
 	const setupSocket = async (enableWebsocket) => {
 		// Native Rust Socket.IO on main backend port (8080)
-		const SOCKETIO_URL = import.meta.env.VITE_SOCKETIO_URL || `http://localhost:8080`;
+		const SOCKETIO_URL = import.meta.env.VITE_SOCKETIO_URL || window.location.origin;
 		const _socket = io(SOCKETIO_URL, {
 			reconnection: true,
 			reconnectionDelay: 1000,
